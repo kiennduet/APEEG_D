@@ -56,10 +56,11 @@ with st.sidebar:
             use_container_width=True
         )
 
-    st.markdown("---")
-    st.info("💡 Tip: Upload your EEG data in the 'Load Data' section to begin.")
-    st.sidebar.caption("© 2024 EEG Analysis Pro. All rights reserved.")
-    st.sidebar.caption("Developed by: Nguyen Duc Kien")
+    if st.session_state.current_page == "Home":
+        st.markdown("---")
+        st.info("💡 Tip: Upload your EEG data in the 'Load Data' section to begin.")
+        st.caption("© 2024 EEG Analysis Pro.")
+        st.caption("Developed by: Nguyen Duc Kien & Tran Quang Duy")
 
 # --- Page Routing ---
 if st.session_state.current_page == "Home":

@@ -193,7 +193,7 @@ elif st.session_state.current_page == "Feature Extraction":
             # Khi bạn chọn biến trong hàm này, features_subjects_single đã có dữ liệu,
             # nên code sẽ chạy vào 'CASE 2' ở trên (không tính toán lại),
             # và hiển thị bảng dữ liệu nhanh chóng, sau đó vẽ biểu đồ ở đây.
-            ui_plot_topo(raw_dataset=st.session_state.raw_dataset_single, features_subjects=st.session_state.features_subjects_single)
+            ui_plot_topo(raw_dataset=st.session_state.raw_dataset_single, df_features_subjects=st.session_state.features_subjects_single)
             
     else:
         st.warning("Please load EEG data in the 'Load & View EEG Data' section before extracting features.")
