@@ -199,7 +199,6 @@ def ui_select_subject(raw_dataset):
     raw_data = filter_subject_data(raw_dataset, selected_subject)
     return raw_data
 
-
 def ui_select_channels(raw_dataset, purpose=None):
     """UI để chọn kênh EEG từ danh sách subjects"""
 

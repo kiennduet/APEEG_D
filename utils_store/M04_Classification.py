@@ -13,13 +13,9 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
-from xgboost import XGBClassifier
-from lightgbm import LGBMClassifier
 
-
+from utils_store.M01_DataLoader import ui_select_channels, ui_eeg_subjects_uploader
+from utils_store.M03_FeatureExtraction import plot_two_topomaps_features, ui_select_feature, select_features_from_df, select_channels_from_df, plot_p_value_topomap
 
 def add_label(features_subjects, label):
     features_subjects['Label'] = label
@@ -37,11 +33,6 @@ def train_ml(X, y, num_folds = 5, num_loops = 10, save_path=None):
         RandomForestClassifier(),
         GradientBoostingClassifier(),
         SVC(),
-        # DecisionTreeClassifier(),
-        # KNeighborsClassifier(),
-        # GaussianNB(),
-        # XGBClassifier(use_label_encoder=False, eval_metric="logloss"),
-        LGBMClassifier()
     ]
     mean_accuracies = np.empty((num_loops,1))
 
@@ -87,37 +78,36 @@ def predict_ml(features_subjects, models):
 
     return pred_results
 
+def ui_load_features_train_groups(raw_dataset, feature_names):
+    if raw_dataset:
+        selected_channels = ui_select_channels(raw_dataset)
 
-
-def ui_load_features_train_groups():
     uploaded_g1 = st.file_uploader("Upload Group 1:", type=["csv"])
-    label_g1 = st.text_input("Label for Group 1:", value="")
+    name_g1  = st.text_input("Name for Group 1:", value="")
     uploaded_g2 = st.file_uploader("Upload Group 2:", type=["csv"])
-    label_g2 = st.text_input("Label for Group 2:", value="")
+    name_g2  = st.text_input("Name for Group 2:", value="")
 
-    if uploaded_g1 is not None and uploaded_g2 is not None and label_g1.strip() and label_g2.strip():
-        try:
-            label_g1 = int(label_g1)
-            label_g2 = int(label_g2)
-        except ValueError:
-            st.error("Labels must be numeric.")
-            return None
+    label_g1 = 0
+    label_g2 = 1
 
-        features_group1 = load_features_subjects(uploaded_g1)
-        features_group1 = add_label(features_subjects=features_group1, label=label_g1)
-        features_group2 = load_features_subjects(uploaded_g2)
-        features_group2 = add_label(features_subjects=features_group2, label=label_g2)
+    if uploaded_g1 is not None and uploaded_g2 is not None:
+        df_g1 = load_features_subjects(uploaded_g1)
+        df_g1 = select_channels_from_df(select_features_from_df(df_g1, feature_names),selected_channels)
+        
+        df_g2 = load_features_subjects(uploaded_g2)
+        df_g2 = select_channels_from_df(select_features_from_df(df_g2, feature_names),selected_channels)
 
-        df = pd.concat([features_group1, features_group2])
-        st.markdown("Feature Set:")
-        st.dataframe(df)
-
-        X = df.drop(columns=['Label'])
-        y = df['Label']
-
-        return X, y
+        return df_g1, df_g2, label_g1, label_g2, name_g1, name_g2
     return None
 
+def creat_data_4train(df_g1, df_g2, label_g1, label_g2):
+    features_g1_labeled = add_label(features_subjects=df_g1, label=label_g1)
+    features_g2_labeled = add_label(features_subjects=df_g2, label=label_g2)
+    df = pd.concat([features_g1_labeled, features_g2_labeled])
+
+    X = df.drop(columns=['Label'])
+    y = df['Label']
+    return df, X, y
 
 def ui_load_features_predict_subjects():
 
@@ -140,25 +130,35 @@ def ui_load_models():
     return models
 
 def UI_train_ml():
+
     st.sidebar.header("", divider="orange")
     st.sidebar.header(":orange[Classification]")
-
     st.sidebar.subheader("Classification Adjustments")
+    selected_features = ui_select_feature()
     num_folds = st.sidebar.slider("Number of folds:", value=5, min_value=5, max_value=20, step=5)
     num_loops = st.sidebar.slider("Number of loops:", value=5, min_value=5, max_value=100, step=5)
     save_path = st.sidebar.text_input("Type path if you want to save models:", value=None)
+    raw_dataset = ui_eeg_subjects_uploader(input_path="input/temp_rawData")
 
-    data = ui_load_features_train_groups()
-    if data is not None:
-        X, y = data
-        if not X.empty and not y.empty:
+    result = ui_load_features_train_groups(raw_dataset, selected_features)
+    if result:
+        df_g1, df_g2, label_g1, label_g2, name_g1, name_g2 = result
+        df, X, y = creat_data_4train(df_g1, df_g2, label_g1, label_g2)
+        st.dataframe(df)
 
-            model_results = train_ml(X=X,y=y,num_folds=num_folds,num_loops=num_loops, save_path=save_path)
-            
-            st.header("", divider="rainbow")
-            st.header(":orange[Classification]")
-            st.dataframe(model_results)
-    return 
+        st.header("", divider="rainbow")
+        st.header(":orange[Topographic plot]")
+        
+        topo_fig = plot_two_topomaps_features(df_g1, df_g2, selected_features,
+                                              name_g1, name_g2)
+        st.pyplot(topo_fig)
+        
+        topo_p_fig = plot_p_value_topomap(df_g1, df_g2, selected_features)
+        st.pyplot(topo_p_fig)
+
+        st.header(":orange[Classification]")
+        model_results = train_ml(X, y, num_folds, num_loops, save_path)
+        st.dataframe(model_results)
 
 def UI_predict_ml(features_subjects = None):
 
@@ -170,13 +170,9 @@ def UI_predict_ml(features_subjects = None):
     models = ui_load_models()
 
     if features_subjects is not None and not features_subjects.empty and models:
-        pred_results = predict_ml(features_subjects=features_subjects, models=models)
+        pred_results = predict_ml(features_subjects, models)
         st.dataframe(pred_results) 
 
     return
 
-
-# UI_train_ml()
-
-# UI_predict_ml()
 

@@ -35,7 +35,7 @@ def plot_psd(raw_data, freqs, psds, channel_names):
     sub_id = get_id_subject(raw_data=raw_data)
     ch_indices = [raw_data.ch_names.index(ch_name) for ch_name in channel_names if ch_name in raw_data.ch_names]
     colors = plt.cm.rainbow(np.linspace(0, 1, len(ch_indices)))
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(12, 5))
     
     for idx, ch_idx in enumerate(ch_indices):
         psd_channel = psds[ch_idx]

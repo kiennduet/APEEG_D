@@ -1,5 +1,5 @@
 import streamlit as st
-from utils_store.M03_FeatureExtraction import UI_feature_extraction, ui_plot_topo, ui_select_feature
+from utils_store.M03_FeatureExtraction import UI_feature_extraction, ui_plot_topo, ui_select_feature, ui_plot_feature_line
 
 def show_feature_extraction():
     st.header("🛠️ EEG Feature Extraction")
@@ -18,9 +18,11 @@ def show_feature_extraction():
                 st.session_state.df_features_subjects = feature_results
 
         if st.session_state.df_features_subjects is not None:
-            ui_plot_topo(raw_dataset=st.session_state.raw_dataset_single, 
-                         df_features_subjects=st.session_state.df_features_subjects, 
+            ui_plot_topo(df_features_subjects=st.session_state.df_features_subjects, 
                          selected_features=selected_features)
+            
+            ui_plot_feature_line(df_features_subjects=st.session_state.df_features_subjects,
+                                 selected_features=selected_features)
             
     else:
         st.warning("Please load EEG data in the 'Load & View EEG Data' section before extracting features.")

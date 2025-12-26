@@ -28,19 +28,13 @@ def show_load_data():
                     channel_names = st.session_state.raw_data_selected.ch_names
                     pe_settings, ape_settings = ui_adjust_param_fooof()
 
-                    selected_channel_fooof = st.selectbox(
-                        "Select Channel for FOOOF Fitting:",
-                        channel_names,
-                        key="fooof_channel_selector_single"
-                    )
+                    selected_channel_fooof = st.selectbox("Select Channel for FOOOF Fitting:",channel_names,
+                                                          key="fooof_channel_selector_single")
                     _, ffitting_fig = plot_fooof(
-                        freqs=freqs,
-                        psds=psd,
+                        freqs=freqs,psds=psd,
                         raw_data=st.session_state.raw_data_selected,
-                        pe_settings=pe_settings,
-                        ape_settings=ape_settings,
-                        channel_names=[selected_channel_fooof],
-                        show_fplot=True
+                        pe_settings=pe_settings,ape_settings=ape_settings,
+                        channel_names=[selected_channel_fooof],show_fplot=True
                     )
                     st.pyplot(ffitting_fig)
     st.markdown("---")
