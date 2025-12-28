@@ -283,6 +283,7 @@ def plot_two_topomaps_features(df_features_group1, df_features_group2, feature_n
         avg_subjects_g1 = feature_group1.mean(axis=1)
         avg_subjects_g2 = feature_group2.mean(axis=1)
         t_stat, p_val = ttest_ind(avg_subjects_g1, avg_subjects_g2, equal_var=False)
+        p_value_features[feature_name] = p_val
 
     for i, feature_name in enumerate(feature_names):
         current_feature_values = np.concatenate([
