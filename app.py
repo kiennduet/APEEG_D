@@ -1,4 +1,4 @@
-APP_VERSION = "v0.7.1"
+APP_VERSION = "v1.7.1"
 LAST_UPDATE = "2025-12-27"
 
 import streamlit as st

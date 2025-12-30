@@ -7,7 +7,7 @@ def show_load_data():
     st.header("📤 Load and Explore EEG Data")
     input_path = "input/temp_rawData"
 
-    st.subheader("1. Load Single Subject Data")
+    st.subheader("1. Load Your Data")
     
     if 'raw_dataset_single' not in st.session_state:
         st.session_state.raw_dataset_single = None
