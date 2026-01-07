@@ -22,7 +22,7 @@ def show_feature_extraction():
                          selected_features=selected_features)
             
             ui_plot_feature_line(df_g1=st.session_state.df_features_subjects,
-                                 selected_features=selected_features, name_g1=None, name_g2=None)
+                                 selected_features=selected_features, name_g1="G", name_g2=None)
 
             
     else:

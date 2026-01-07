@@ -351,58 +351,49 @@ def plot_p_value_topomap(df1, df2, feature_names):
     plt.tight_layout()
     return fig
 
-def plot_feature_line(df_features_subjects, feature_name):
-    """
-    Vẽ biểu đồ line plot thể hiện Mean và Std của một feature trên 19 kênh 
-    của toàn bộ bệnh nhân.
-    """
-    df_feat = select_features_from_df(df_features_subjects, feature_names=feature_name)
-    # Chuyển đổi sang dạng Long-format
-    df_long = df_feat.melt(var_name='Channel', value_name='Value')
-    df_long['Channel'] = df_long['Channel'].str.replace(f'{feature_name}_', '', regex=False) # ('CF_Fp1' -> 'Fp1')
-    ordered_channels = df_long['Channel'].unique() # Đồng bộ viết hoa để khớp với danh sách chuẩn
-    df_long['Channel'] = pd.Categorical(df_long['Channel'], categories=ordered_channels, ordered=True)
-    df_long = df_long.sort_values('Channel')
-
-    fig, ax = plt.subplots(figsize=(12, 3))    
-    sns.lineplot(
-        data=df_long, x='Channel', y='Value', 
-        marker='o', errorbar='sd',
-        color='#1f77b4', ax=ax)
-    
-    ax.set_title(f'Global Profile of {feature_name}', fontweight='bold')
-    ax.set_xlabel('EEG Channels')
-    ax.set_ylabel('Value')
-    ax.grid(True, linestyle='--', alpha=0.5)
-    plt.tight_layout()
-    
-    return fig
-
 def plot_feature_line(df1, df2=None, feature="CF", name_g1="G1", name_g2="G2"):
-    # 1. Gom dữ liệu (Loop ngắn gọn để xử lý cả 1 hoặc 2 DF)
-    all_data = []
+    all_data, stats_list = [], []
+    
+    # 1. Loop xử lý dữ liệu và tính toán thống kê
+    # Kiểm tra 'is not None' ở đây là đúng
     for df, name in [(df1, name_g1), (df2, name_g2)]:
-        if df is not None:
-            tmp = select_features_from_df(df, feature).melt(var_name='Channel', value_name='Value')
+        if df is not None: 
+            # Lọc feature và chuyển dạng Long
+            tmp = select_features_from_df(df, feature).melt(var_name='Ch', value_name='Val')
             tmp['Group'] = name
+            tmp['Ch'] = tmp['Ch'].str.replace(f'{feature}_', '', regex=False)
+            
+            # Tính Mean ± Std
+            stats_list.append(f"{name}: {tmp['Val'].mean():.2f} ± {tmp['Val'].std():.2f}")
             all_data.append(tmp)
     
+    if not all_data: return None # Tránh lỗi nếu không có dữ liệu nào
+
     df_plot = pd.concat(all_data)
-    df_plot['Channel'] = df_plot['Channel'].str.replace(f'{feature}_', '', regex=False)
     
-    # 2. Sắp xếp Channel (Lấy order từ các cột thực tế của df1)
+    # 2. Sắp xếp Channel
     order = [c.replace(f'{feature}_', '') for c in df1.filter(like=f'{feature}_').columns]
-    df_plot['Channel'] = pd.Categorical(df_plot['Channel'], categories=order, ordered=True)
+    df_plot['Ch'] = pd.Categorical(df_plot['Ch'], categories=order, ordered=True)
     
-    # 3. Vẽ (Hue tự động phân biệt nếu có df2, nếu không thì vẽ 1 đường)
+    # 3. Vẽ biểu đồ
     fig, ax = plt.subplots(figsize=(12, 3))
-    sns.lineplot(data=df_plot, x='Channel', y='Value', 
-                 hue='Group' if df2 is not None else None, 
-                 marker='o', errorbar='sd', ax=ax, palette='tab10')
     
-    ax.set_title(f'Global Profile of {feature}', fontweight='bold')
-    ax.grid(True, linestyle='--', alpha=0.5)
+    # --- SỬA LỖI TẠI DÒNG NÀY ---
+    # Thay 'if df2' thành 'if df2 is not None'
+    use_hue = 'Group' if df2 is not None else None
+    
+    sns.lineplot(
+        data=df_plot, x='Ch', y='Val', 
+        hue=use_hue, 
+        marker='o', errorbar='sd', palette='tab10', ax=ax
+    )
+    
+    # 4. Cấu hình hiển thị
+    ax.set_title(f"{feature} ({ '  |  '.join(stats_list) })", fontweight='bold')
+    ax.set(xlabel='EEG Channels', ylabel='Value')
+    ax.grid(True, ls='--', alpha=0.5)
     plt.tight_layout()
+    
     return fig
 
 def ui_adjust_param_fooof():
