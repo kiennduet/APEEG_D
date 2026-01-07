@@ -74,8 +74,8 @@ def train_ml_withUI(X, y, num_folds=5, num_loops=10, save_path=None):
             {"clf__C": [0.001, 0.01, 0.1, 1, 10, 100], "clf__penalty": ['l1', 'l2']}),
         "RF": (RandomForestClassifier(class_weight='balanced'), 
             {"clf__n_estimators": [50, 200], "clf__max_depth": [None, 20], "clf__min_samples_leaf": [5, 10]}),
-        "GB": (GradientBoostingClassifier(), {"clf__learning_rate": [0.01, 0.1], "clf__n_estimators": [100, 200]}),
-        "SVC": (SVC(class_weight='balanced', probability=True), {"clf__C": [0.1, 1, 10], "clf__gamma": ['scale', 'auto']}),
+        # "GB": (GradientBoostingClassifier(), {"clf__learning_rate": [0.01, 0.1], "clf__n_estimators": [100, 200]}),
+        # "SVC": (SVC(class_weight='balanced', probability=True), {"clf__C": [0.1, 1, 10], "clf__gamma": ['scale', 'auto']}),
     }
 
     results, total_steps = [], len(param_grids) * num_loops
@@ -111,7 +111,6 @@ def train_ml_withUI(X, y, num_folds=5, num_loops=10, save_path=None):
             pickle.dump(best_model, open(os.path.join(save_path, f"model_{name}.pkl"), "wb"))
 
     bar.progress(1.0)
-    status.success("✅ Finish!")
     return pd.DataFrame(results)
 
 def predict_ml(features_subjects, models):
@@ -178,10 +177,10 @@ def ui_load_models():
     return models
 
 def UI_train_ml():
-
     st.sidebar.header("", divider="orange")
     st.sidebar.header(":orange[Classification]")
     st.sidebar.subheader("Classification Adjustments")
+    
     selected_features = ui_select_feature()
     num_folds = st.sidebar.slider("Number of folds:", value=5, min_value=5, max_value=20, step=5)
     num_loops = st.sidebar.slider("Number of loops:", value=1, min_value=1, max_value=100, step=1)
@@ -191,16 +190,28 @@ def UI_train_ml():
     raw_dataset = ui_eeg_subjects_uploader(input_path="input/temp_rawData")
 
     result = ui_load_features_train_groups(raw_dataset, selected_features)
+    
     if result:
         df_g1, df_g2, label_g1, label_g2, name_g1, name_g2 = result
         df, X, y = creat_data_4train(df_g1, df_g2, label_g1, label_g2)
+        
+        st.subheader("Data Preview")
         st.dataframe(df)
-
         st.header(":orange[Classification]")
-        model_results = train_ml_withUI(X, y, num_folds, num_loops, save_path)
-        st.dataframe(model_results)
+        
+        col1, col2 = st.columns(2)
+        
+        if col1.button("🚀 Start Training Models", use_container_width=True):
+            # Chạy hàm huấn luyện và lưu vào session_state
+            with st.spinner("Training in progress..."):
+                st.session_state.model_results = train_ml_withUI(X, y, num_folds, num_loops, save_path)
+            st.success("Training Complete!")
 
-        if model_results and st.button("🚀 Analysis features", use_container_width=True):
+        if "model_results" in st.session_state:
+            st.dataframe(st.session_state.model_results)
+
+        # Nút 2: Phân tích đặc trưng (Topo & Line plot)
+        if col2.button("🔥 Analysis features", use_container_width=True):
             ui_plot_topo_2group(df_g1, df_g2, selected_features, name_g1, name_g2)
             ui_plot_feature_line(df_g1, selected_features, df_g2, name_g1, name_g2)
 
