@@ -16,37 +16,27 @@ def create_directory(directory):
     """Ensure the input directory exists."""
     os.makedirs(directory, exist_ok=True)
 
-def get_sorted_eeg_channels(channel_list):
+def get_sorted_eeg_channels(channel_list, custom_order=None):
     """
-    Hàm nhận vào list channel và trả về list đã được sắp xếp theo chuẩn EEG 10-10.
+    Sắp xếp channel theo thứ tự custom, hoặc theo chuẩn 10-10 nếu không có custom.
     """
-    # 1. Danh sách chuẩn hiện đại (Hệ thống 10-10)
-    STANDARD_ORDER = [
-        'FP1', 'FPZ', 'FP2', 'AF7', 'AF3', 'AFZ', 'AF4', 'AF8',
-        'F9', 'F7', 'F5', 'F3', 'F1', 'FZ', 'F2', 'F4', 'F6', 'F8', 'F10',
-        'FT9', 'FT7', 'FC5', 'FC3', 'FC1', 'FCZ', 'FC2', 'FC4', 'FC6', 'FT8', 'FT10',
-        'A1', 'T9', 'T7', 'C5', 'C3', 'C1', 'CZ', 'C2', 'C4', 'C6', 'T8', 'T10', 'A2',
-        'TP9', 'TP7', 'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6', 'TP8', 'TP10',
-        'P9', 'P7', 'P5', 'P3', 'P1', 'PZ', 'P2', 'P4', 'P6', 'P8', 'P10',
-        'PO9', 'PO7', 'PO3', 'POZ', 'PO4', 'PO8', 'PO10',
-        'O1', 'OZ', 'O2', 'I1', 'IZ', 'I2'
+    STANDARD_1010 = [
+        'FP1', 'FPZ', 'FP2', 'AF7', 'AF3', 'AFZ', 'AF4', 'AF8', 'F9', 'F7', 'F5', 'F3', 'F1', 'FZ', 'F2', 'F4', 'F6', 'F8', 'F10',
+        'FT9', 'FT7', 'FC5', 'FC3', 'FC1', 'FCZ', 'FC2', 'FC4', 'FC6', 'FT8', 'FT10', 'A1', 'T9', 'T7', 'C5', 'C3', 'C1', 'CZ', 'C2', 'C4', 'C6', 'T8', 'T10', 'A2',
+        'TP9', 'TP7', 'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6', 'TP8', 'TP10', 'P9', 'P7', 'P5', 'P3', 'P1', 'PZ', 'P2', 'P4', 'P6', 'P8', 'P10',
+        'PO9', 'PO7', 'PO3', 'POZ', 'PO4', 'PO8', 'PO10', 'O1', 'OZ', 'O2', 'I1', 'IZ', 'I2'
     ]
+    ref_list = custom_order if custom_order is not None else STANDARD_1010
+    order_map = {str(name).upper().strip(): i for i, name in enumerate(ref_list)}
     
-    # 2. Xử lý Mapping và Alias
-    order_map = {name: i for i, name in enumerate(STANDARD_ORDER)}
-    aliases = {'T3': 'T7', 'T4': 'T8', 'T5': 'P7', 'T6': 'P8', 'M1': 'A1', 'M2': 'A2'}
-    
-    # Gộp alias vào order_map
-    for old, new in aliases.items():
-        if new in order_map:
-            order_map[old] = order_map[new]
-
-    # 3. Định nghĩa logic sắp xếp (Internal Function)
+    if custom_order is None:
+        aliases = {'T3': 'T7', 'T4': 'T8', 'T5': 'P7', 'T6': 'P8', 'M1': 'A1', 'M2': 'A2'}
+        for old, new in aliases.items():
+            if new in order_map: order_map[old] = order_map[new]
     def internal_key(ch_name):
         clean = str(ch_name).upper().strip()
-        if clean in order_map:
-            return (0, order_map[clean]) # Nhóm 0: Kênh chuẩn, sắp xếp theo index
-        return (1, clean)              # Nhóm 1: Kênh lạ, sắp xếp theo tên (A-Z)
+        # Trả về (Nhóm, Thứ tự): Nhóm 0 là kênh nằm trong danh sách, Nhóm 1 là kênh lạ (xếp A-Z)
+        return (0, order_map[clean]) if clean in order_map else (1, clean)
 
     return sorted(list(channel_list), key=internal_key)
 

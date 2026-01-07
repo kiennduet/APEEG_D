@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 import matplotlib.pyplot as plt
 import streamlit as st
 from scipy.stats import ttest_ind
-from utils_store.M01_DataLoader import ui_select_channels, get_id_subject
+from utils_store.M01_DataLoader import ui_select_channels, get_id_subject, get_sorted_eeg_channels
 from utils_store.M02_PSDTransform import ui_adjust_param_psd, psd_trans
 
 class PSDSettings:
@@ -243,76 +243,88 @@ def plot_topomap_features(df_features_subjects, feature_names):
     
     return fig
 
-def plot_combined_topomaps(df1, df2, feature_names, name_g1, name_g2):
-    # 1. Khởi tạo Info & Montage (Rút gọn dùng list comprehension)
+def plot_combined_topomaps(df1, df2, feature_names, name_g1, name_g2, orientation='h'):
+    # 1. Khởi tạo Info
     ch_names = [c.split('_')[1] for c in df1.filter(like=f"{feature_names[0]}_").columns]
     info = mne.create_info(ch_names, 250, 'eeg').set_montage('standard_1020')
+    n_feat = len(feature_names)
     
-    fig, axes = plt.subplots(3, len(feature_names), figsize=(3 * len(feature_names), 8), layout="constrained")
-    axes = np.atleast_2d(axes).reshape(3, -1) # Đảm bảo axes luôn là 2D
+    # 2. Thiết lập Grid dựa trên orientation ('h' = ngang, 'v' = dọc)
+    is_h = orientation.lower() == 'h'
+    nrows, ncols = (3, n_feat) if is_h else (n_feat, 3)
+    figsize = (3 * n_feat, 9) if is_h else (10, 3 * n_feat)
+    
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, layout="constrained")
+    axes = np.atleast_2d(axes)
 
     for i, feat in enumerate(feature_names):
-        # 2. Tính toán nhanh (Vectorized)
+        # Tính toán dữ liệu
         g1, g2 = df1.filter(like=f"{feat}_"), df2.filter(like=f"{feat}_")
         m1, m2 = g1.mean(0).values, g2.mean(0).values
-        # Welch t-test cho toàn bộ channels cùng lúc (axis=0)
         p_vals = -np.log10(np.clip(ttest_ind(g1, g2, axis=0, equal_var=False)[1], 1e-10, 1))
         _, p_glob = ttest_ind(g1.mean(1), g2.mean(1), equal_var=False)
-
-        # 3. Vẽ Topomap & Colorbar (Dùng chung vmin/vmax cho hàng 1-2)
         v = (min(m1.min(), m2.min()), max(m1.max(), m2.max()))
-        
-        # Hàng 1 & 2 (Mean Values)
-        im1, _ = mne.viz.plot_topomap(m1, info, axes=axes[0, i], vlim=v, show=False, cmap='RdBu_r')
-        im2, _ = mne.viz.plot_topomap(m2, info, axes=axes[1, i], vlim=v, show=False, cmap='RdBu_r')
-        plt.colorbar(im2, ax=axes[1, i], orientation='horizontal', shrink=0.8)
-        
-        # Hàng 3 (P-values)
-        im3, _ = mne.viz.plot_topomap(p_vals, info, axes=axes[2, i], vlim=(0, 2), cmap='Reds', show=False)
-        cbar = plt.colorbar(im3, ax=axes[2, i], orientation='horizontal', shrink=0.8)
-        cbar.ax.axvline(1.301, color='black', ls='--') # Vạch p=0.05
 
-        # Tiêu đề & Nhãn (Chỉ hiện nhãn ở cột đầu tiên)
-        axes[0, i].set_title(f"{feat} (p={p_glob:.3f}{'*' if p_glob < .05 else ''})")
-        if i == 0:
-            for r, label in enumerate([name_g1, name_g2, "-log10(p)"]):
-                axes[r, i].set_ylabel(label, fontweight='bold')
+        # Xác định vị trí axes dựa trên hướng
+        ax_list = [axes[0, i], axes[1, i], axes[2, i]] if is_h else [axes[i, 0], axes[i, 1], axes[i, 2]]
+        cbar_dir = 'horizontal' if is_h else 'vertical'
+
+        # Vẽ 3 bản đồ (G1, G2, P-map)
+        im1, _ = mne.viz.plot_topomap(m1, info, axes=ax_list[0], vlim=v, show=False, cmap='RdBu_r')
+        im2, _ = mne.viz.plot_topomap(m2, info, axes=ax_list[1], vlim=v, show=False, cmap='RdBu_r')
+        im3, _ = mne.viz.plot_topomap(p_vals, info, axes=ax_list[2], vlim=(0, 2), show=False, cmap='Reds')
+
+        # Thêm Colorbars
+        plt.colorbar(im2, ax=ax_list[1], orientation=cbar_dir, shrink=0.7)
+        cbar = plt.colorbar(im3, ax=ax_list[2], orientation=cbar_dir, shrink=0.7)
+        if is_h: cbar.ax.axvline(1.301, color='black', ls='--')
+        else: cbar.ax.axhline(1.301, color='black', ls='--')
+
+        # Gán nhãn (Labels)
+        if is_h:
+            ax_list[0].set_title(f"{feat} (p={p_glob:.3f}{'*' if p_glob < .05 else ''})", fontweight='bold')
+            if i == 0:
+                for r, txt in enumerate([name_g1, name_g2, "-log10(p-Value)"]): axes[r, 0].set_ylabel(txt, fontweight='bold')
+        else:
+            ax_list[0].set_ylabel(f"{feat} (p={p_glob:.3f}{'*' if p_glob < .05 else ''})", fontweight='bold', size='large')
+            if i == 0:
+                for c, txt in enumerate([name_g1, name_g2, "-log10(p-Value)"]): axes[0, c].set_title(txt, fontweight='bold')
 
     return fig
 
-def plot_feature_line(df1, df2=None, feature="CF", name_g1="G1", name_g2="G2"):
+def plot_feature_line(df1, df2=None, feature="CF", name_g1="G1", name_g2="G2", custom_order=None):
     all_data, stats_list = [], []
     
+    # 1. Lấy và chuẩn bị dữ liệu
     for df, name in [(df1, name_g1), (df2, name_g2)]:
-        if df is not None: 
-            # Lọc feature và chuyển dạng Long
+        if df is not None:
             tmp = select_features_from_df(df, feature).melt(var_name='Ch', value_name='Val')
-            tmp['Group'] = name
-            tmp['Ch'] = tmp['Ch'].str.replace(f'{feature}_', '', regex=False)
-            
+            tmp['Group'], tmp['Ch'] = name, tmp['Ch'].str.replace(f'{feature}_', '', regex=False)
             stats_list.append(f"{name}: {tmp['Val'].mean():.2f} ± {tmp['Val'].std():.2f}")
             all_data.append(tmp)
     
     if not all_data: return None
-
     df_plot = pd.concat(all_data)
     
-    # 2. Sắp xếp Channel
-    order = [c.replace(f'{feature}_', '') for c in df1.filter(like=f'{feature}_').columns]
-    df_plot['Ch'] = pd.Categorical(df_plot['Ch'], categories=order, ordered=True)
+    # 2. SẮP XẾP CHANNEL (Sử dụng hàm get_sorted_eeg_channels)
+    raw_channels = df_plot['Ch'].unique()
+    sorted_order = get_sorted_eeg_channels(raw_channels, custom_order=custom_order)
     
+    # Ép kiểu Categorical để seaborn vẽ theo thứ tự đã sắp xếp
+    df_plot['Ch'] = pd.Categorical(df_plot['Ch'], categories=sorted_order, ordered=True)
+    df_plot = df_plot.sort_values('Ch') # Đảm bảo lineplot nối các điểm theo đúng thứ tự
+
     # 3. Vẽ biểu đồ
-    fig, ax = plt.subplots(figsize=(12, 3))
-    use_hue = 'Group' if df2 is not None else None
-    
-    sns.lineplot(data=df_plot, x='Ch', y='Val', 
-                 hue=use_hue, marker='o', errorbar='sd', palette='tab10', ax=ax)
+    fig, ax = plt.subplots(figsize=(12, 4))
+    sns.lineplot(data=df_plot, x='Ch', y='Val', hue='Group' if df2 is not None else None, 
+                 marker='o', errorbar='sd', palette='tab10', ax=ax)
     
     # 4. Cấu hình hiển thị
     ax.set_title(f"{feature} ({ '  |  '.join(stats_list) })", fontweight='bold')
-    ax.set(xlabel='EEG Channels', ylabel='Value')
+    ax.set(xlabel='EEG Channels (Sorted)', ylabel='Value')
     ax.grid(True, ls='--', alpha=0.5)
-    plt.xticks(rotation=45); plt.tight_layout()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
     
     return fig
 
@@ -342,14 +354,17 @@ def ui_plot_topo_2group(df1, df2, feature_names, name_g1, name_g2):
     st.header("", divider="rainbow")
     st.header(":orange[Topographic plot]")
 
-    topo_2g = plot_combined_topomaps(df1, df2, feature_names,name_g1, name_g2)
+    topo_2g = plot_combined_topomaps(df1, df2, feature_names,name_g1, name_g2,orientation='h')
     st.pyplot(topo_2g)
 
 def ui_plot_feature_line(df_g1, selected_features, df_g2=None, name_g1="Group 1", name_g2="Group 2"):
     st.subheader("Line Plot Analysis", divider="gray")
+
+    custom_order = ['F3', 'C3', 'P3', 'O1', 'F7', 'T3', 'T5',
+                    'F4', 'C4', 'P4', 'O2', 'F8', 'T4', 'T6']
     for feature in selected_features:
         fig = plot_feature_line(df1=df_g1, df2=df_g2, feature=feature, 
-                                name_g1=name_g1, name_g2=name_g2)
+                                name_g1=name_g1, name_g2=name_g2,custom_order=custom_order)
         st.pyplot(fig)
 
 def UI_feature_extraction(raw_dataset, selected_features):
