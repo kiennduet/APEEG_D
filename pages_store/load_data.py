@@ -1,6 +1,6 @@
 import streamlit as st
 from utils_store.M01_DataLoader import ui_eeg_subjects_uploader, ui_select_subject
-from utils_store.M02_PSDTransform import UI_plot_psd
+from utils_store.M02_PSDTransform import UI_plot_raw_eeg, UI_plot_psd
 from utils_store.M03_FeatureExtraction import ui_adjust_param_fooof, plot_fooof
 
 def show_load_data():
@@ -20,6 +20,10 @@ def show_load_data():
         st.session_state.raw_data_selected = ui_select_subject(raw_dataset=st.session_state.raw_dataset_single)
 
         if st.session_state.raw_data_selected:
+            st.markdown("### Time Domain Visualization")
+            with st.expander("Show Raw EEG", expanded=False):
+                UI_plot_raw_eeg(st.session_state.raw_data_selected)
+
             st.markdown("### Power Spectral Density (PSD) & FOOOF Analysis")
             with st.expander("Show PSD and FOOOF Plots", expanded=True):
                 freqs, psd, selected_channels = UI_plot_psd(st.session_state.raw_data_selected)

@@ -45,20 +45,21 @@ def read_eegf(file_path):
     """Read EEG file based on its extension and replace patient name with file name."""
     readers = {
         'set': mne.io.read_raw_eeglab,
-        'fif': mne.io.read_raw_fif
+        'fif': mne.io.read_raw_fif,
+        'edf': mne.io.read_raw_edf,
     }
-    
+
     ext = file_path.split('.')[-1].lower()
     if ext in readers:
         raw_data = readers[ext](file_path, preload=True)
-        
+
         # Lấy tên file từ đường dẫn
         file_name = os.path.basename(file_path)
         file_name_without_ext = os.path.splitext(file_name)[0]
-        
+
         # Thay thế tên bệnh nhân bằng tên file
         raw_data.info['subject_info'] = {'his_id': file_name_without_ext}
-        
+
         return raw_data
     raise ValueError(f"File format not supported: {ext}")
 
@@ -81,9 +82,9 @@ def filter_subject_data(raw_dataset, selected_subject):
 def process_eeg_files(uploaded_files, input_path, file_type):
     """Process uploaded EEG files and return loaded datasets."""
     create_directory(input_path)
-    
-    file_types = {".fif": ["fif"], ".set": ["set", "fdt"]}
-    file_groups = defaultdict(lambda: {"set": None, "fdt": None, "fif": None})
+
+    file_types = {".fif": ["fif"], ".set": ["set", "fdt"], ".edf": ["edf"]}
+    file_groups = defaultdict(lambda: {"set": None, "fdt": None, "fif": None, "edf": None})
     raw_dataset = []
 
     # Nhóm các file theo base name
@@ -110,6 +111,12 @@ def process_eeg_files(uploaded_files, input_path, file_type):
             temp_file_path = os.path.join(input_path, f"{base_name}.fif")
             with open(temp_file_path, "wb") as temp_fif_file:
                 temp_fif_file.write(files["fif"].getbuffer())
+
+        elif file_type == ".edf" and files["edf"]:
+            temp_file_path = os.path.join(input_path, f"{base_name}.edf")
+            with open(temp_file_path, "wb") as temp_edf_file:
+                temp_edf_file.write(files["edf"].getbuffer())
+
         else:
             continue  # Bỏ qua nếu thiếu file cần thiết
 
@@ -120,9 +127,9 @@ def process_eeg_files(uploaded_files, input_path, file_type):
 
 def ui_eeg_subjects_uploader(input_path):
     """UI for EEG file uploading and loading."""
-    
-    file_type = st.selectbox("Select file type", [".set", ".fif"])
-    file_types = {".fif": ["fif"], ".set": ["set", "fdt"]}
+
+    file_type = st.selectbox("Select file type", [".set", ".fif", ".edf"])
+    file_types = {".fif": ["fif"], ".set": ["set", "fdt"], ".edf": ["edf"]}
     
     uploaded_files = st.file_uploader(
         f"Upload {file_type} file" if file_type == ".fif" else "Upload .set and .fdt files",
@@ -138,9 +145,9 @@ def ui_eeg_subjects_uploader(input_path):
 
 def ui_eeg_groups_uploader(input_path):
     """UI for uploading EEG files into multiple groups."""
-    
-    file_type = st.selectbox("Select file type", [".set", ".fif"])
-    file_types = {".fif": ["fif"], ".set": ["set", "fdt"]}
+
+    file_type = st.selectbox("Select file type", [".set", ".fif", ".edf"])
+    file_types = {".fif": ["fif"], ".set": ["set", "fdt"], ".edf": ["edf"]}
 
     num_groups = st.text_input("Enter number of groups", "0")
     if not num_groups.isdigit():

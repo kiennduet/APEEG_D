@@ -14,7 +14,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from utils_store.M01_DataLoader import ui_select_channels, ui_eeg_subjects_uploader
-from utils_store.M03_FeatureExtraction import ui_select_feature, select_features_from_df, select_channels_from_df, ui_plot_topo_2group, ui_plot_feature_line
+from utils_store.M03_FeatureExtraction import ui_select_feature, select_features_from_df, select_channels_from_df
 
 def add_label(features_subjects, label):
     features_subjects['Label'] = label
@@ -199,21 +199,14 @@ def UI_train_ml():
         st.dataframe(df)
         st.header(":orange[Classification]")
         
-        col1, col2 = st.columns(2)
-        
-        if col1.button("🚀 Start Training Models", use_container_width=True):
-            # Chạy hàm huấn luyện và lưu vào session_state
+        if st.button("🚀 Start Training Models", use_container_width=True):
             with st.spinner("Training in progress..."):
                 st.session_state.model_results = train_ml_withUI(X, y, num_folds, num_loops, save_path)
             st.success("Training Complete!")
 
         if "model_results" in st.session_state:
             st.dataframe(st.session_state.model_results)
-
-        # Nút 2: Phân tích đặc trưng (Topo & Line plot)
-        if col2.button("🔥 Analysis features", use_container_width=True):
-            ui_plot_topo_2group(df_g1, df_g2, selected_features, name_g1, name_g2)
-            ui_plot_feature_line(df_g1, selected_features, df_g2, name_g1, name_g2)
+            
 
 def UI_predict_ml(features_subjects = None):
 

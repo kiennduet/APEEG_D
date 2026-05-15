@@ -354,7 +354,7 @@ def ui_plot_topo_2group(df1, df2, feature_names, name_g1, name_g2):
     st.header("", divider="rainbow")
     st.header(":orange[Topographic plot]")
 
-    topo_2g = plot_combined_topomaps(df1, df2, feature_names,name_g1, name_g2,orientation='h')
+    topo_2g = plot_combined_topomaps(df1, df2, feature_names,name_g1, name_g2,orientation='v')
     st.pyplot(topo_2g)
 
 def ui_plot_feature_line(df_g1, selected_features, df_g2=None, name_g1="Group 1", name_g2="Group 2"):

@@ -8,6 +8,7 @@ from pages_store.load_data import show_load_data
 from pages_store.feature_extraction import show_feature_extraction
 from pages_store.train_model import show_train_model
 from pages_store.predict import show_predict
+from pages_store.part1_statistics import show_statistics
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -50,8 +51,9 @@ with st.sidebar:
         "Home": "🏠 Home",
         "Load Data": "📤 Load & View EEG Data",
         "Feature Extraction": "🛠️ Feature Extraction",
+        "Statistics": "📊 Statistical Analysis",
         "Train Model": "🎓 Train ML Model",
-        "Predict": "🔮 Make Predictions"
+        "Predict": "🔮 Make Predictions",
     }
 
     for page_key, page_display_name in pages.items():
@@ -81,3 +83,5 @@ elif st.session_state.current_page == "Train Model":
     show_train_model()
 elif st.session_state.current_page == "Predict":
     show_predict()
+elif st.session_state.current_page == "Statistics":
+    show_statistics()
